@@ -29,8 +29,13 @@ function View_Spec_OpeningFcn(hObject, eventdata, handles, varargin)
 % handles    structure with handles and user data (see GUIDATA)
 % varargin   command line arguments to View_Spec (see VARARGIN)
 
-%addpath(genpath('C:\Users\s2882161\Documents\MATLAB\MatlabFns'));
-addpath(genpath('E:\Matlab\tools\MTSNMF_denoising')); % add path of denoise function
+% add the function path
+p = mfilename('fullpath');
+[pathstr,~,~] = fileparts(p); 
+cd(pathstr);
+addpath(pathstr);
+
+addpath(genpath('..\tools\MTSNMF_denoising')); % add path of denoise function
 set(handles.RadioGray,'value',1);
 set(handles.RadioColor,'value',0);
 set(handles.RadioOverlaid,'value',0);

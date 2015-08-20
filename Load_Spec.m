@@ -33,7 +33,8 @@ while (string ~= -1)
 		datatype = sscanf(string,'data type = %d');
     elseif (strncmp(string,'interleave',10))
         interleave = sscanf(string, 'interleave = %s');
-    elseif (strncmpi(string,'wavelength = {',14))
+    % after updated GDAL library, the wavelength becomes band names
+    elseif (strncmpi(string,'band names = {',13)) || (strncmpi(string,'wavelength = {',14)) 
         string = fgets(fp); 
         for i = 1: bands  
             bandname(i,1) = sscanf(string, '%f');
