@@ -101,10 +101,10 @@ function SliderWavelength_Callback(hObject, eventdata, handles)
 
 band = get(handles.SliderWavelength, 'Value');
 bandname = handles.bandname;
-index = knnsearch(bandname,band);
+index = knnsearch(bandname, band);
 set(handles.EditWavelength, 'String', num2str(bandname(index)));
 slice = squeeze(handles.datacube(:,:,index));
-axes(handles.axes1); cla; imshow(slice, [ ]);
+axes(handles.axes1);  imshow(slice, [ ]);
 
 
 
@@ -136,34 +136,6 @@ if (~isempty(output)) && ndims(output) == 3
     handles.datacube = output;
 end
 guidata(hObject, handles); 
-%test
-
-% --------------------------------------------------------------------
-function Analyse_Callback(hObject, eventdata, handles)
-% hObject    handle to Analyse (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-datacube = handles.datacube;
-bandname = handles.bandname;
-bandnum = length(bandname);
-interval = bandname(2)-bandname(1);
-sequence = zeros(bandnum, 4);% analyse results
-sequence(:,1) = bandname; 
-focus = zeros(bandnum,1);
-
-for i=1:bandnum
-    slice = squeeze(datacube(:,:,i));
-    focus(i,1) = fmeasure(slice, 'GDER',[]);   
-end
-scrsz = get(0,'ScreenSize');
-h = figure(1);
-set(h,'Position',[1 scrsz(4)/4 scrsz(3)/3 scrsz(4)/3],'Name','Focus Level Estimation');
-bar(sequence(:,1),focus,'Facecolor',[0,0,1],'LineWidth', 0.1); xlim([bandname(1)-interval,bandname(end)+interval]);title('focus level');
-[c,index] = max(focus);
-handles.reference = index; 
-handles.focus = focus;
-guidata(hObject, handles);    
-
 
 
 % --- Executes on button press in ButtonChangeRGB.
@@ -311,6 +283,7 @@ cd (currentpath);
 handles.datacube = datacube;
 handles.originalDatacube = datacube; % back up
 handles.bandname = bandname;
+handles.originalbandname = bandname; % back up
 numofBand = length(bandname);
 midBand = round(numofBand/2);
 interval = bandname(2) - bandname(1);
@@ -780,9 +753,6 @@ guidata(hObject, handles);
 SliderWavelength_Callback(hObject, eventdata, handles);
 
 
-
-
-
 % --- Executes on selection change in PopupmenuDenoise.
 function PopupmenuDenoise_Callback(hObject, eventdata, handles)
 % hObject    handle to PopupmenuDenoise (see GCBO)
@@ -806,8 +776,93 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
 end
 
 
-% --- Executes during object deletion, before destroying properties.
-function ButtonCalibrate_DeleteFcn(hObject, eventdata, handles)
-% hObject    handle to ButtonCalibrate (see GCBO)
+
+
+% --------------------------------------------------------------------
+function xy_Callback(hObject, eventdata, handles)
+% hObject    handle to xy (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+datacube = handles.originalDatacube;
+bandname = handles.originalbandname;
+numofBand = length(bandname);
+midBand = round(numofBand/2);
+interval = bandname(2) - bandname(1);
+slidermin = bandname(1);
+slidermax = bandname(end);
+sliderstep = [interval interval] / (slidermax - slidermin);
+set (handles.TextInfo, 'String', 'X-Y View');
+set (handles.SliderWavelength,'Min',slidermin);
+set (handles.SliderWavelength,'Max',slidermax);
+set (handles.SliderWavelength,'SliderStep',sliderstep);
+set (handles.SliderWavelength,'Value',bandname(midBand));
+set (handles.EditWavelength, 'String', bandname(midBand));
+slice = squeeze(datacube(:,:,midBand));
+axes(handles.axes1); cla; imshow(slice, [ ]);
+xlabel(handles.axes1,'X');
+ylabel(handles.axes1,'Y');
+handles.datacube = datacube;
+handles.bandname = bandname;
+guidata(hObject, handles);
+
+% --------------------------------------------------------------------
+function xz_Callback(hObject, eventdata, handles)
+% hObject    handle to xz (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+M = makehgtform('xrotate',pi/2);
+tform = affine3d(M);
+datacube = handles.originalDatacube;
+tdatacube = imwarp(datacube,tform);
+[m, n, b] = size(tdatacube);
+numofBand = b;
+midBand = round(numofBand/2);
+interval = 1;
+slidermin = 1;
+slidermax = b;
+sliderstep = [interval interval] / (slidermax - slidermin);
+set (handles.TextInfo, 'String', 'X-Z View');
+set (handles.SliderWavelength,'Min',slidermin);
+set (handles.SliderWavelength,'Max',slidermax);
+set (handles.SliderWavelength,'SliderStep',sliderstep);
+set (handles.SliderWavelength,'Value', midBand);
+set (handles.EditWavelength, 'String', num2str(midBand));
+slice = squeeze(tdatacube(:,:,midBand));
+axes(handles.axes1); cla; imshow(slice, [ ]);
+xlabel(handles.axes1,'X');
+ylabel(handles.axes1,'Z');
+handles.datacube = tdatacube;
+handles.bandname = [1:b]';
+guidata(hObject, handles);
+
+
+
+% --------------------------------------------------------------------
+function yz_Callback(hObject, eventdata, handles)
+% hObject    handle to yz (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+M = makehgtform('yrotate',pi/2);
+tform = affine3d(M);
+datacube = handles.originalDatacube;
+tdatacube = imwarp(datacube,tform);
+[m, n, b] = size(tdatacube);
+numofBand = b;
+midBand = round(numofBand/2);
+interval = 1;
+slidermin = 1;
+slidermax = b;
+sliderstep = [interval interval] / (slidermax - slidermin);
+set (handles.TextInfo, 'String', 'Y-Z View');
+set (handles.SliderWavelength,'Min',slidermin);
+set (handles.SliderWavelength,'Max',slidermax);
+set (handles.SliderWavelength,'SliderStep',sliderstep);
+set (handles.SliderWavelength,'Value', midBand);
+set (handles.EditWavelength, 'String', num2str(midBand));
+slice = squeeze(tdatacube(:,:,midBand));
+axes(handles.axes1); cla; imshow(slice, [ ]);
+xlabel(handles.axes1,'Y');
+ylabel(handles.axes1,'Z');
+handles.datacube = tdatacube;
+handles.bandname = [1:b]';
+guidata(hObject, handles);
