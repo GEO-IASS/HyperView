@@ -102,9 +102,28 @@ function SliderWavelength_Callback(hObject, eventdata, handles)
 band = get(handles.SliderWavelength, 'Value');
 bandname = handles.bandname;
 index = knnsearch(bandname, band);
+viewmode = handles.viewmode;
+[m, n] = size(handles.slice);
 set(handles.EditWavelength, 'String', num2str(bandname(index)));
 slice = squeeze(handles.datacube(:,:,index));
-axes(handles.axes1);  imshow(slice, [ ]);
+switch viewmode
+    case 1 % X-Y
+    axes(handles.axes1);  imshow(slice, [ ]);
+    case 2 % X-Z
+    axes(handles.axes1);  imshow(slice, [ ]); 
+    xlabel(handles.axes1, 'X');
+    ylabel(handles.axes1,'\lambda');
+    axes(handles.axes_spec); 
+    cla, imshow(handles.slice, []); 
+    hold on, line([1,n], [m-index+1, m-index+1]);
+    case 3 % Y-Z    
+    axes(handles.axes1);  imshow(slice, [ ]);
+    xlabel(handles.axes1, '\lambda');
+    ylabel(handles.axes1,'Y');
+    axes(handles.axes_spec); 
+    cla, imshow(handles.slice, []); 
+    hold on, line([index+1, index+1], [1,m]);
+end
 
 
 
@@ -151,20 +170,22 @@ answer = inputdlg(prompt,dlg_title,num_lines,def);
 if (isempty(answer))
     return;
 end
+bandname = handles.bandname;
 T1 = str2num(answer{1});
 T2 = str2num(answer{2});
 T3 = str2num(answer{3});
 if (T1>1000) || (T1<400) || (T2>1000) || (T2<400) || (T3>=1000) || (T3<=400)
-    return;
+    warning('The color image might not be correctly composited.');
 end
-sliceR = squeeze(handles.datacube(:,:,floor((T1-handles.bandname(1))/10+1)));
+interval = bandname(2) - bandname(1);
+sliceR = squeeze(handles.datacube(:,:,floor((T1-bandname(1))/interval+1)));
 %this is to show the error of registration error
 % RGB(:,:,1) = imadjust(sliceR);
 RGB(:,:,1) = sliceR;
-sliceG = squeeze(handles.datacube(:,:,floor((T2-handles.bandname(1))/10+1)));
+sliceG = squeeze(handles.datacube(:,:,floor((T2-bandname(1))/interval+1)));
 % RGB(:,:,2) = imadjust(sliceG);
 RGB(:,:,2) = sliceG;
-sliceB = squeeze(handles.datacube(:,:,floor((T3-handles.bandname(1))/10+1)));
+sliceB = squeeze(handles.datacube(:,:,floor((T3-bandname(1))/interval+1)));
 % RGB(:,:,3) = imadjust(sliceB);
 RGB(:,:,3) = sliceB;
 handles.RGB = RGB;
@@ -256,12 +277,13 @@ if strcmp(filename(end-3:end), '.mat')
                 bandname = (1:1:size(datacube,3))';
         end
     end
-%   normalization will be done in meau
-%     if max(datacube(:)) ~= 1 && size(datacube,3) ~= 255
-%         datacube = normalise(datacube,'percent', 0.999);
-%     else
-%         datacube = normalise(datacube,'percent', 1);
-%     end
+%   in case of Mat file, normalization can directly done once importing the
+%   data
+      if strcmp(filename, 'KSC.mat')
+          datacube = normalise(datacube,'percent', 0.99);
+      else
+          datacube = normalise(datacube,'percent', 1);
+      end
     description = 'online database';
 else
     [datacube, bandname, description] = Load_Spec(filename);
@@ -310,6 +332,8 @@ RGB(:,:,3) = slice;
 %     RGB(:,:,3) = squeeze(handles.datacube(:,:,floor((500-bandname(1))/10+1)));
 % end
 handles.RGB = RGB;
+handles.slice = slice;
+handles.viewmode = 1; % {1: xy; 2:xz, 3: yz}
 axes(handles.axes1); cla; imshow(slice, []);
 axes(handles.axes_spec); cla;
 set(handles.axes_spec, 'Visible', 'off');
@@ -345,7 +369,7 @@ function MainFigure_CloseRequestFcn(hObject, eventdata, handles)
 
 % Hint: delete(hObject) closes the figure
 delete(hObject);
-close all
+close gcf; % need test
 
 
 % --------------------------------------------------------------------
@@ -376,44 +400,7 @@ slice = sum(handles.datacube, 3);
 slice = slice/length(handles.bandname);
 axes(handles.axes1); cla; imshow(slice,[]);
 
-
-% --------------------------------------------------------------------
-function Refine_Callback(hObject, eventdata, handles)
-% hObject    handle to Refine (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-focuslevel = handles.focus;
-qualitythresh =  min(focuslevel)*2;
-goodnum = length(find(focuslevel > qualitythresh));
-badnum = length(focuslevel) - goodnum;
-[m, n, ~] = size(handles.datacube);
-datacube = zeros(m, n, goodnum);
-bandname = zeros(goodnum , 1);
-j = 1;
-for i = 1: length(handles.bandname)
-    slice = squeeze(handles.datacube(:,:,i));  
-    if focuslevel(i) > qualitythresh;
-        datacube(:,:,j) = slice;
-        bandname(j) = handles.bandname(i);
-        j = j + 1;
-    end
-end
-handles.datacube = datacube;
-handles.bandname = bandname;
-
-msgbox(sprintf('%d %s', badnum, 'bad frames have been removed')); 
-interval = bandname(2) - bandname(1);
-slidermin = bandname(1);
-slidermax = bandname(end);
-sliderstep = [interval interval] / (slidermax - slidermin);
-set (handles.SliderWavelength,'Min',slidermin);
-set (handles.SliderWavelength,'Max',slidermax);
-set (handles.SliderWavelength,'SliderStep',sliderstep);
-guidata(hObject, handles)
-
-    
-    
+     
 % --------------------------------------------------------------------
 function Saveas_Callback(hObject, eventdata, handles)
 % hObject    handle to Saveas (see GCBO)
@@ -452,56 +439,56 @@ outdata = (indata-double(mind)*ones(size(indata))) / (maxd-mind);
 outdata(find(outdata(:)>1)) = 1;
 
 %--------------------------------------------------------------------
-function ToolSegment_ClickedCallback(hObject, eventdata, handles)
-% hObject    handle to ToolSegment (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-addpath('C:\Users\s2882161\Documents\MATLAB\libsvm');
-addpath('C:\Users\s2882161\Documents\MATLAB\multimodal');
-datacube = handles.datacube;
-bandname = handles.bandname;
-kmeansInitial = importdata('kmeansInitial.mat');
-l = 5;
-[m, n, b] = size(datacube);
-img = zeros(m*n,1);
-d = reshape(datacube,[m*n, b]);
-%kmeansInitial = [plant; frame; white; base; background];
-[idx,ctrs] = kmeans(d,l,'Distance','cosine', 'start', kmeansInitial);
-%[idx,ctrs] = kmeans(d,l, 'start', kmeansInitial);
-for i = 1:l
-    img(idx==i) = i;
-end
-img = reshape(img, [m n]);
-axes(handles.axes1),cla;
-imagesc(img);
-colormap(jet);
-
-
-d(idx == 3,:) = 0;
-d(idx == 4,:) = 0;
-d(idx == 5,:) = 0;
-
-svmsamples = importdata('svmsamples.mat');
-l = 2;
-samplenum = 20;
-img = zeros(m*n,1);
-label_instance = [zeros(samplenum,1); ones(samplenum,1); ones(samplenum,1)*2];
-instance = [zeros(samplenum,41); svmsamples.plant; svmsamples.frame];
-model = svmtrain(label_instance, instance, '-s 1');
-[predicted_label] = svmpredict(zeros(m*n,1),d, model);
-for i = 1:l
-    img(predicted_label==i) = i;
-end
-img = reshape(img, [m n]);
-axes(handles.axes1),cla;
-imagesc(img);
-d(predicted_label == 0,:) = 0;
-d(predicted_label == 2,:) = 0;
-
-datacube = reshape(d,[m, n, b]);
-
-handles.datacube = datacube; %
-guidata(hObject, handles);
+% function ToolSegment_ClickedCallback(hObject, eventdata, handles)
+% % hObject    handle to ToolSegment (see GCBO)
+% % eventdata  reserved - to be defined in a future version of MATLAB
+% % handles    structure with handles and user data (see GUIDATA)
+% addpath('C:\Users\s2882161\Documents\MATLAB\libsvm');
+% addpath('C:\Users\s2882161\Documents\MATLAB\multimodal');
+% datacube = handles.datacube;
+% bandname = handles.bandname;
+% kmeansInitial = importdata('kmeansInitial.mat');
+% l = 5;
+% [m, n, b] = size(datacube);
+% img = zeros(m*n,1);
+% d = reshape(datacube,[m*n, b]);
+% %kmeansInitial = [plant; frame; white; base; background];
+% [idx,ctrs] = kmeans(d,l,'Distance','cosine', 'start', kmeansInitial);
+% %[idx,ctrs] = kmeans(d,l, 'start', kmeansInitial);
+% for i = 1:l
+%     img(idx==i) = i;
+% end
+% img = reshape(img, [m n]);
+% axes(handles.axes1),cla;
+% imagesc(img);
+% colormap(jet);
+% 
+% 
+% d(idx == 3,:) = 0;
+% d(idx == 4,:) = 0;
+% d(idx == 5,:) = 0;
+% 
+% svmsamples = importdata('svmsamples.mat');
+% l = 2;
+% samplenum = 20;
+% img = zeros(m*n,1);
+% label_instance = [zeros(samplenum,1); ones(samplenum,1); ones(samplenum,1)*2];
+% instance = [zeros(samplenum,41); svmsamples.plant; svmsamples.frame];
+% model = svmtrain(label_instance, instance, '-s 1');
+% [predicted_label] = svmpredict(zeros(m*n,1),d, model);
+% for i = 1:l
+%     img(predicted_label==i) = i;
+% end
+% img = reshape(img, [m n]);
+% axes(handles.axes1),cla;
+% imagesc(img);
+% d(predicted_label == 0,:) = 0;
+% d(predicted_label == 2,:) = 0;
+% 
+% datacube = reshape(d,[m, n, b]);
+% 
+% handles.datacube = datacube; %
+% guidata(hObject, handles);
 
 
 
@@ -548,23 +535,6 @@ for i = 1:b
     imwrite(img,imgname);
 end    
 cd(currentpath); 
-
-% --------------------------------------------------------------------
-function MenuOpen_Callback(hObject, eventdata, handles)
-% hObject    handle to MenuOpen (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-ToolOpen_ClickedCallback(hObject, eventdata, handles)
-
-% --------------------------------------------------------------------
-
-
-
-% --------------------------------------------------------------------
-function Calibration_Callback(hObject, eventdata, handles)
-% hObject    handle to Calibration (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
 
 
 % --------------------------------------------------------------------
@@ -753,27 +723,6 @@ guidata(hObject, handles);
 SliderWavelength_Callback(hObject, eventdata, handles);
 
 
-% --- Executes on selection change in PopupmenuDenoise.
-function PopupmenuDenoise_Callback(hObject, eventdata, handles)
-% hObject    handle to PopupmenuDenoise (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: contents = cellstr(get(hObject,'String')) returns PopupmenuDenoise contents as cell array
-%        contents{get(hObject,'Value')} returns selected item from PopupmenuDenoise
-
-
-% --- Executes during object creation, after setting all properties.
-function PopupmenuDenoise_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to PopupmenuDenoise (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: popupmenu controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
 
 
 
@@ -783,6 +732,7 @@ function xy_Callback(hObject, eventdata, handles)
 % hObject    handle to xy (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+handles.viewmode = 1;
 datacube = handles.originalDatacube;
 bandname = handles.originalbandname;
 numofBand = length(bandname);
@@ -803,6 +753,7 @@ xlabel(handles.axes1,'X');
 ylabel(handles.axes1,'Y');
 handles.datacube = datacube;
 handles.bandname = bandname;
+set(handles.axes_spec, 'Visible', 'off');
 guidata(hObject, handles);
 
 % --------------------------------------------------------------------
@@ -810,6 +761,7 @@ function xz_Callback(hObject, eventdata, handles)
 % hObject    handle to xz (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+handles.viewmode = 2;
 M = makehgtform('xrotate',pi/2);
 tform = affine3d(M);
 datacube = handles.originalDatacube;
@@ -830,9 +782,13 @@ set (handles.EditWavelength, 'String', num2str(midBand));
 slice = squeeze(tdatacube(:,:,midBand));
 axes(handles.axes1); cla; imshow(slice, [ ]);
 xlabel(handles.axes1,'X');
-ylabel(handles.axes1,'Z');
+ylabel(handles.axes1,'\lambda');
 handles.datacube = tdatacube;
 handles.bandname = [1:b]';
+set(handles.axes_spec, 'Visible', 'on');
+axes(handles.axes_spec); 
+cla, imshow(handles.slice, []); 
+hold on, line([1,n], [b-midBand+1, b-midBand+1]);
 guidata(hObject, handles);
 
 
@@ -842,6 +798,7 @@ function yz_Callback(hObject, eventdata, handles)
 % hObject    handle to yz (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+handles.viewmode = 3;
 M = makehgtform('yrotate',pi/2);
 tform = affine3d(M);
 datacube = handles.originalDatacube;
@@ -861,8 +818,13 @@ set (handles.SliderWavelength,'Value', midBand);
 set (handles.EditWavelength, 'String', num2str(midBand));
 slice = squeeze(tdatacube(:,:,midBand));
 axes(handles.axes1); cla; imshow(slice, [ ]);
-xlabel(handles.axes1,'Y');
-ylabel(handles.axes1,'Z');
+xlabel(handles.axes1, '\lambda');
+ylabel(handles.axes1,'Y');
 handles.datacube = tdatacube;
 handles.bandname = [1:b]';
+set(handles.axes_spec, 'Visible', 'on');
+axes(handles.axes_spec); 
+cla, imshow(handles.slice, []); 
+hold on, line([midBand, midBand], [1,m]);
 guidata(hObject, handles);
+
