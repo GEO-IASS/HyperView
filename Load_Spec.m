@@ -14,6 +14,9 @@ headername = strcat(prefix,'.hdr');
 dataname = strcat(prefix,'.dat');
 if 0 == exist(dataname, 'file')
    dataname = strcat(prefix,'.raw');
+   if 0 == exist(dataname, 'file')
+        dataname = strcat(prefix,'.bsq');
+   end
 end
 fp = fopen(headername);
 if fp == -1

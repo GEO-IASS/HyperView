@@ -106,9 +106,14 @@ viewmode = handles.viewmode;
 [m, n] = size(handles.slice);
 set(handles.EditWavelength, 'String', num2str(bandname(index)));
 slice = squeeze(handles.datacube(:,:,index));
+flagAdjust = get(handles.RadioImadjust, 'Value');  % flag to indicate if the image is strentched to show
 switch viewmode
     case 1 % X-Y
-    axes(handles.axes1);  imshow(slice, [ ]);
+        if flagAdjust
+            axes(handles.axes1);  imshow(slice, [ ]);
+        else
+            axes(handles.axes1);  imshow(slice, [0 1]);
+        end
     case 2 % X-Z
     axes(handles.axes1);  imshow(slice, [ ]); 
     xlabel(handles.axes1, 'X');
@@ -378,13 +383,18 @@ function uipushtool4_ClickedCallback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-[FileName, path] = uiputfile({'*.jpg;*.tif;*.png;*.gif','All Image Files';...
-          '*.*','All Files' },'Save Image');
-currentpath = cd();  
-cd(path);
-img = getimage(handles.axes1);
-imwrite(img,FileName);
-cd(currentpath);
+% [FileName, path] = uiputfile({'*.jpg;*.tif;*.png;*.gif','All Image Files';...
+%           '*.*','All Files' },'Save Image');
+% currentpath = cd();  
+% cd(path);
+% 
+% img = getimage(handles.axes1);
+% imwrite(img,FileName);
+% cd(currentpath);
+
+% set(0,'showhiddenhandles','on')
+% print -dmeta -noui
+editmenufcn(gcf,'EditCopyFigure');
 
 
 % --- Executes on button press in RadioOverlaid.
@@ -527,11 +537,12 @@ end
 datacube = datacube*255;
 datacube = uint8(datacube);
 [~, ~, b] = size(datacube);
+numactive = floor(log10(bandname(end))) + 1; % ????
 for i = 1:b
     img = squeeze(datacube(:,:,i));
     img = imadjust(img);
     img = uint8(img);
-    imgname = fullfile(foldername, [num2str(bandname(i)), '.jpg']);
+    imgname = fullfile(foldername, [sprintf(['%0' num2str(numactive) 'd'], bandname(i)), '.jpg']);
     imwrite(img,imgname);
 end    
 cd(currentpath); 
@@ -828,3 +839,17 @@ cla, imshow(handles.slice, []);
 hold on, line([midBand, midBand], [1,m]);
 guidata(hObject, handles);
 
+
+
+% --- Executes on button press in RadioImadjust.
+function RadioImadjust_Callback(hObject, eventdata, handles)
+% hObject    handle to RadioImadjust (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of RadioImadjust
+if get(hObject, 'Value') % indicator in on, do nothing
+
+else  
+    Process_Callback(hObject, eventdata, handles); % indicator in off, normalise the datacube
+end
