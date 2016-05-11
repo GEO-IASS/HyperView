@@ -1,3 +1,6 @@
 *.mat
+*.asv
 *.hdr
 *.dat
+*.raw
+*.bsq

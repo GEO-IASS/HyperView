@@ -60,7 +60,6 @@ function varargout = View_Spec_OutputFcn(hObject, eventdata, handles)
 % hObject    handle to figure
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-
 % Get default command line output from handles structure
 varargout{1} = handles.output;
 
@@ -130,8 +129,6 @@ switch viewmode
     hold on, line([index+1, index+1], [1,m]);
 end
 
-
-
 % --- Executes on button press in ButtonAutoPlay.
 function ButtonAutoPlay_Callback(hObject, eventdata, handles)
 % hObject    handle to ButtonAutoPlay (see GCBO)
@@ -149,7 +146,6 @@ for i=1:length(bandname)
     pause(0.3);
 end
 
-
 % --------------------------------------------------------------------
 function Register_Callback(hObject, eventdata, handles)
 % hObject    handle to Register (see GCBO)
@@ -160,7 +156,6 @@ if (~isempty(output)) && ndims(output) == 3
     handles.datacube = output;
 end
 guidata(hObject, handles); 
-
 
 % --- Executes on button press in ButtonChangeRGB.
 function ButtonChangeRGB_Callback(hObject, eventdata, handles)
@@ -196,7 +191,6 @@ RGB(:,:,3) = sliceB;
 handles.RGB = RGB;
 axes(handles.axes1); cla; imshow(RGB,[]);
 guidata(hObject, handles);    
-
 
 % --------------------------------------------------------------------
 function ToolSpectralProfile_OnCallback(hObject, eventdata, handles)
@@ -238,8 +232,6 @@ while strcmp(get(hObject,'State'),'on')
    
 end
 
-
-
 % --------------------------------------------------------------------
 function ToolOpen_ClickedCallback(hObject, eventdata, handles)
 % hObject    handle to ToolOpen (see GCBO)
@@ -247,7 +239,7 @@ function ToolOpen_ClickedCallback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 currentpath = cd();
-[filename, pathname] = uigetfile({'*.hdr;*.dat;*.raw;*.mat','Hyper Files (*.hdr,*.dat,*.raw,*.mat)'},'Load Hyperspectral File');
+[filename, pathname] = uigetfile({'*.hdr;*.mat','Hyper Files (*.hdr,*.mat)'},'Load Hyperspectral File');
 if (filename==0) % cancel pressed
     return;
 end
@@ -385,6 +377,9 @@ function SaveFigure_ClickedCallback(hObject, eventdata, handles)
 
 [FileName, path] = uiputfile({'*.jpg;*.tif;*.png;*.gif','All Image Files';...
           '*.*','All Files' },'Save Image');
+if FileName == 0
+    return;
+end
 currentpath = cd();  
 cd(path);
 
@@ -392,11 +387,10 @@ img = getimage(handles.axes1);
 img = imadjust(img);
 imwrite(img,FileName);
 cd(currentpath);
-
+%% attempt to save current figure into copyboard 
 % set(0,'showhiddenhandles','on')
 % print -dmeta -noui
 % editmenufcn(gcf,'EditCopyFigure');
-
 
 % --- Executes on button press in RadioOverlaid.
 function RadioOverlaid_Callback(hObject, eventdata, handles)
@@ -411,7 +405,6 @@ slice = sum(handles.datacube, 3);
 slice = slice/length(handles.bandname);
 axes(handles.axes1); cla; imshow(slice,[]);
 
-     
 % --------------------------------------------------------------------
 function Saveas_Callback(hObject, eventdata, handles)
 % hObject    handle to Saveas (see GCBO)
@@ -436,7 +429,6 @@ if strcmp(FileName(end-3:end),'.mat')
 end
 cd (currentpath);
 msgbox('new data cube has been saved.','save file');
-
 
 function [outdata,mind,maxd] = normalise(data, p2, p3)
 indata = double(data);
@@ -501,9 +493,6 @@ outdata(find(outdata(:)>1)) = 1;
 % handles.datacube = datacube; %
 % guidata(hObject, handles);
 
-
-
-
 % --- Executes on button press in ButtonImadjust.
 function ButtonImadjust_Callback(hObject, eventdata, handles)
 % hObject    handle to ButtonImadjust (see GCBO)
@@ -526,6 +515,9 @@ function MenuOutput_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 [foldername, path] = uiputfile({ '*.*','All Files' },'Output images into a folder');
+if FileName == 0
+    return
+end
 currentpath = cd();  
 cd(path);
 mkdir(foldername)
@@ -548,7 +540,6 @@ for i = 1:b
 end    
 cd(currentpath); 
 
-
 % --------------------------------------------------------------------
 function DarkCalibrate_Callback(hObject, eventdata, handles)
 % hObject    handle to DarkCalibrate (see GCBO)
@@ -570,8 +561,6 @@ end
 handles.darkFrame = darkFrame;
 guidata(hObject, handles);
 msgbox('dark frame loaded');
-
-
 
 % --------------------------------------------------------------------
 function WhiteCalibrate_Callback(hObject, eventdata, handles)
@@ -659,6 +648,9 @@ function OutputAsWhole_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 [foldername, path] = uiputfile({ '*.*','All Files' },'Output images into a folder');
+if FileName == 0
+    return
+end
 currentpath = cd();  
 cd(path);
 mkdir(foldername)
@@ -676,7 +668,6 @@ for i = 1:b
     imwrite(img,imgname);
 end    
 cd(currentpath); 
-
 
 % --- Executes on button press in ButtonClassify.
 function ButtonClassify_Callback(hObject, eventdata, handles)
@@ -696,11 +687,7 @@ rho = corr(tempData, spectral);
 rho(rho>0.9) = 0;
 img = reshape(rho,[m, n]);
 figure, imshow(img, []);
-
 % rho = corr(data', spectral');
-
-
-
 
 % --- Executes on button press in ButtonDenoise.
 function ButtonDenoise_Callback(hObject, eventdata, handles)
@@ -733,11 +720,6 @@ end
 handles.datacube = denoisedData;
 guidata(hObject, handles);
 SliderWavelength_Callback(hObject, eventdata, handles);
-
-
-
-
-
 
 % --------------------------------------------------------------------
 function xy_Callback(hObject, eventdata, handles)
@@ -803,8 +785,6 @@ cla, imshow(handles.slice, []);
 hold on, line([1,n], [b-midBand+1, b-midBand+1]);
 guidata(hObject, handles);
 
-
-
 % --------------------------------------------------------------------
 function yz_Callback(hObject, eventdata, handles)
 % hObject    handle to yz (see GCBO)
@@ -840,16 +820,16 @@ cla, imshow(handles.slice, []);
 hold on, line([midBand, midBand], [1,m]);
 guidata(hObject, handles);
 
-
-
 % --- Executes on button press in RadioImadjust.
 function RadioImadjust_Callback(hObject, eventdata, handles)
 % hObject    handle to RadioImadjust (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-
 % Hint: get(hObject,'Value') returns toggle state of RadioImadjust
-if get(hObject, 'Value') % indicator in on, do nothing
+
+% if the RadioImadjust indicator in on, every band is shown with
+% imshow(img, []) which automatically stretches the intensity. 
+if get(hObject, 'Value')
 
 else  
     Process_Callback(hObject, eventdata, handles); % indicator in off, normalise the datacube
