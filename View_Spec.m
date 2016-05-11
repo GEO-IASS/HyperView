@@ -9,7 +9,7 @@ gui_State = struct('gui_Name',       mfilename, ...
                    'gui_OutputFcn',  @View_Spec_OutputFcn, ...
                    'gui_LayoutFcn',  [] , ...
                    'gui_Callback',   []);
-if nargin && ischar(varargin{1})
+if nargin && ischar(varargin{1})                            
     gui_State.gui_Callback = str2func(varargin{1});
 end
 
@@ -378,23 +378,24 @@ close gcf; % need test
 
 
 % --------------------------------------------------------------------
-function uipushtool4_ClickedCallback(hObject, eventdata, handles)
-% hObject    handle to uipushtool4 (see GCBO)
+function SaveFigure_ClickedCallback(hObject, eventdata, handles)
+% hObject    handle to SaveFigure (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% [FileName, path] = uiputfile({'*.jpg;*.tif;*.png;*.gif','All Image Files';...
-%           '*.*','All Files' },'Save Image');
-% currentpath = cd();  
-% cd(path);
-% 
-% img = getimage(handles.axes1);
-% imwrite(img,FileName);
-% cd(currentpath);
+[FileName, path] = uiputfile({'*.jpg;*.tif;*.png;*.gif','All Image Files';...
+          '*.*','All Files' },'Save Image');
+currentpath = cd();  
+cd(path);
+
+img = getimage(handles.axes1);
+img = imadjust(img);
+imwrite(img,FileName);
+cd(currentpath);
 
 % set(0,'showhiddenhandles','on')
 % print -dmeta -noui
-editmenufcn(gcf,'EditCopyFigure');
+% editmenufcn(gcf,'EditCopyFigure');
 
 
 % --- Executes on button press in RadioOverlaid.
