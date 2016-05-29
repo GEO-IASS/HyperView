@@ -203,7 +203,7 @@ datacube = handles.datacube;
 bandname = handles.bandname;
 [~, ~, b] = size(datacube);
 %axes(handles.axes1);
-num = 6;
+num = 10;
 sample = zeros(num,b);
 i = 1;
 scrsz = get(0,'ScreenSize');
@@ -214,22 +214,31 @@ xlabel('Wavelength'); ylabel('Reflectance');
 while strcmp(get(hObject,'State'),'on')
    %[x,y,but] = ginput(1);
    %rect = getrect(ax);
+   %try rect = getrect(handles.axes1);
+   %catch err
+   %    continue;
+   %end 
    rect = getrect(handles.axes1);
+   if any(rect<0) % if the region is outside the image
+       set(hObject,'State','off');
+       break; 
+   end
    roi = datacube(round(rect(2)):round(rect(2)+rect(4)),round(rect(1)):round(rect(1)+rect(3)),:);      
    spectral = squeeze(mean(mean(roi,1),2));
    sample(i,:) = spectral;
-   assignin('base', 'temp', sample); 
+   
    %imagehandle = plot(handles.axes_spec,bandname,spectral,'b');   
    plot(get(h,'CurrentAxes'), bandname,spectral);   
    if range(spectral(:)) <= 1 
         set(get(h,'CurrentAxes'),'YLim',[0 1]);
    end
-  % title(handles.axes_spec,'spectral profile');
+   title(handles.axes_spec,'spectral profile');
    i = i + 1;
    if (i == num+1)
+       set(hObject,'State','off');
+       assignin('base', 'temp', sample); 
        break;
    end
-   
 end
 
 % --------------------------------------------------------------------
