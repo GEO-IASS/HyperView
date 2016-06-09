@@ -201,7 +201,7 @@ function ToolSpectralProfile_OnCallback(hObject, eventdata, handles)
 % set(handles.axes_spec,'Visible','On');
 datacube = handles.datacube;
 bandname = handles.bandname;
-[~, ~, b] = size(datacube);
+[nrow, ncol, b] = size(datacube);
 %axes(handles.axes1);
 num = 10;
 sample = zeros(num,b);
@@ -219,7 +219,7 @@ while strcmp(get(hObject,'State'),'on')
    %    continue;
    %end 
    rect = getrect(handles.axes1);
-   if any(rect<0) % if the region is outside the image
+   if rect(1) <0 || rect(1)>ncol || rect(2) <0 || rect(2)>nrow% if the region is outside the image
        set(hObject,'State','off');
        break; 
    end
@@ -839,7 +839,13 @@ function RadioImadjust_Callback(hObject, eventdata, handles)
 % if the RadioImadjust indicator in on, every band is shown with
 % imshow(img, []) which automatically stretches the intensity. 
 if get(hObject, 'Value')
-
 else  
     Process_Callback(hObject, eventdata, handles); % indicator in off, normalise the datacube
 end
+
+
+% --------------------------------------------------------------------
+function Calibration_Callback(hObject, eventdata, handles)
+% hObject    handle to Calibration (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
