@@ -105,7 +105,7 @@ viewmode = handles.viewmode;
 [m, n] = size(handles.slice);
 set(handles.EditWavelength, 'String', num2str(bandname(index)));
 slice = squeeze(handles.datacube(:,:,index));
-flagAdjust = get(handles.RadioImadjust, 'Value');  % flag to indicate if the image is strentched to show
+flagAdjust = get(handles.RadioNormalise, 'Value');  % flag to indicate if the image is strentched to show
 switch viewmode
     case 1 % X-Y
         if flagAdjust
@@ -685,18 +685,15 @@ function ButtonClassify_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 datacube = handles.datacube;
 bandname = handles.bandname;
-[m, n, b] = size(datacube);
-rect = getrect(handles.axes1);
-roi = datacube(round(rect(2)):round(rect(2)+rect(4)),round(rect(1)):round(rect(1)+rect(3)),:);      
-spectral = squeeze(mean(mean(roi,1),2));
-plot(handles.axes_spec, bandname, spectral);   
-tempData = reshape(datacube, [m*n, b]);
-tempData = double(tempData');
-rho = corr(tempData, spectral);
-rho(rho>0.9) = 0;
-img = reshape(rho,[m, n]);
-figure, imshow(img, []);
-% rho = corr(data', spectral');
+feat = handles.feat;
+label = handles.label;
+[nrow, ncol, nb] = size(datacube);
+vdatacube = reshape(datacube, nrow*ncol, nb);
+predicted_labels = SVMClassify(feat, label, vdatacube);
+mask = reshape(predicted_labels, [nrow, ncol]);
+handles.mask = mask;
+figure, imshow(mask,[]);
+guidata(hObject, handles);
 
 % --- Executes on button press in ButtonDenoise.
 function ButtonDenoise_Callback(hObject, eventdata, handles)
@@ -829,18 +826,18 @@ cla, imshow(handles.slice, []);
 hold on, line([midBand, midBand], [1,m]);
 guidata(hObject, handles);
 
-% --- Executes on button press in RadioImadjust.
-function RadioImadjust_Callback(hObject, eventdata, handles)
-% hObject    handle to RadioImadjust (see GCBO)
+% --- Executes on button press in RadioNormalise.
+function RadioNormalise_Callback(hObject, eventdata, handles)
+% hObject    handle to RadioNormalise (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-% Hint: get(hObject,'Value') returns toggle state of RadioImadjust
+% Hint: get(hObject,'Value') returns toggle state of RadioNormalise
 
-% if the RadioImadjust indicator in on, every band is shown with
+% if the RadioNormalise indicator in on, every band is shown with
 % imshow(img, []) which automatically stretches the intensity. 
 if get(hObject, 'Value')
+    Process_Callback(hObject, eventdata, handles); %indicator is on, normalise the datacube
 else  
-    Process_Callback(hObject, eventdata, handles); % indicator in off, normalise the datacube
 end
 
 
@@ -849,3 +846,66 @@ function Calibration_Callback(hObject, eventdata, handles)
 % hObject    handle to Calibration (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+
+% --------------------------------------------------------------------
+function ToolLabel_OnCallback(hObject, eventdata, handles)
+% hObject    handle to ToolLabel (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+datacube = handles.datacube;
+bandname = handles.bandname;
+[nrow, ncol, nb] = size(datacube);
+i = 0;
+feat = cell(10,1);
+label = cell(10,1);
+labelStr = cell(10,1);
+while strcmp(get(hObject,'State'),'on')
+   rect = getrect(handles.axes1);
+   if rect(1) <0 || rect(1)>ncol || rect(2) <0 || rect(2)>nrow% if the region is outside the image
+       set(hObject,'State','off');
+       break; 
+   end
+   rectangle('Position',rect);
+   i = i + 1;
+   roi = datacube(round(rect(2)):round(rect(2)+rect(4)),round(rect(1)):round(rect(1)+rect(3)),:);      
+   [m, n, ~] = size(roi); 
+   feat{i} = reshape(roi, [m*n, nb]);
+   answer = inputdlg('Label: (numerrical 0-9)','Input', [1 50]);
+   x = str2double(answer{1});
+   labelStr{i} = answer{1};
+   disp(['class',  labelStr{i}]);
+   label{i} = ones(m*n,1)*x; 
+%   region{i} = cat(2,x, rect);
+end
+disp('training samples have been selected!');
+feat = cell2mat(feat);
+label = cell2mat(label);
+%region = cell2mat(region);
+handles.feat = feat;
+handles.label = label;
+string = ['Class'; labelStr(1:i)];
+set(handles.listClass, 'String', string);
+guidata(hObject, handles);
+
+
+% --- Executes on selection change in listClass.
+function listClass_Callback(hObject, eventdata, handles)
+% hObject    handle to listClass (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: contents = cellstr(get(hObject,'String')) returns listClass contents as cell array
+%        contents{get(hObject,'Value')} returns selected item from listClass
+
+
+% --- Executes during object creation, after setting all properties.
+function listClass_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to listClass (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: listbox controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
